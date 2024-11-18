@@ -1,167 +1,156 @@
-const { analyzeImage } = require('./testVision');
-const { CARBON_SCORES, MATERIAL_MULTIPLIERS } = require('../config/constants');
+const { ImageAnalysisClient } = require('@azure-rest/ai-vision-image-analysis');
+const createClient = require('@azure-rest/ai-vision-image-analysis').default;
+const { AzureKeyCredential } = require('@azure/core-auth');
+const dotenv = require('dotenv');
 
-// Define clothing categories and their variations
-const CLOTHING_CATEGORIES = {
-    'Sweater': [
-        'sweater', 'pullover', 'jumper', 'knitwear', 'cardigan', 
-        'turtleneck', 'wool sweater', 'knit', 'woolen', 'jersey'
-    ],
-    'T-shirt': [
-        'shirt', 't-shirt', 'tshirt', 'top', 'blouse', 'polo'
-    ],
-    'Jeans': [
-        'jeans', 'pants', 'trousers', 'slacks', 'leggings', 
-        'shorts', 'denim', 'cargo', 'khakis', 'chinos'
-    ],
-    'Jacket': [
-        'jacket', 'coat', 'blazer', 'outerwear', 'windbreaker', 
-        'cardigan', 'parka', 'bomber', 'raincoat', 'overcoat'
-    ],
-    'Shoes': [
-        'shoes', 'sneakers', 'boots', 'footwear', 'sandals', 
-        'trainers', 'heels', 'loafers', 'flats', 'athletic shoes'
-    ],
-    'Skirt': [
-        'skirt', 'midi skirt', 'mini skirt', 'maxi skirt',
-        'pleated skirt', 'a-line skirt'
-    ],
-    'Suit': [
-        'suit', 'tuxedo', 'blazer suit', 'business suit',
-        'formal wear', 'two-piece suit'
-    ],
-    'Sportswear': [
-        'sportswear', 'athletic wear', 'gym clothes', 'workout gear',
-        'activewear', 'fitness wear', 'sports uniform'
-    ],
-    'Underwear': [
-        'underwear', 'lingerie', 'undergarment', 'bra',
-        'briefs', 'boxers', 'panties'
-    ],
-    'Accessories': [
-        'scarf', 'hat', 'cap', 'beanie', 'gloves', 'mittens',
-        'belt', 'tie', 'bowtie', 'socks', 'stockings'
-    ],
-    'Swimwear': [
-        'swimsuit', 'swimming trunks', 'bikini', 'swimwear',
-        'bathing suit', 'beach wear'
-    ]
+dotenv.config();
+
+// Azure Vision setup
+const endpoint = process.env.VISION_ENDPOINT;
+const key = process.env.VISION_KEY;
+const credential = new AzureKeyCredential(key);
+const client = createClient(endpoint, credential);
+
+// Define clothing categories for matching
+const CLOTHING_TYPES = {
+    'Sweater': {
+        terms: ['sweater', 'pullover', 'jumper', 'knitwear', 'cardigan', 'turtleneck'],
+        baseScore: 8
+    },
+    'T-shirt': {
+        terms: ['shirt', 't-shirt', 'tshirt', 'top', 'blouse', 'polo'],
+        baseScore: 5
+    },
+    'Jeans': {
+        terms: ['jeans', 'pants', 'trousers', 'denim', 'leggings'],
+        baseScore: 10
+    },
+    'Jacket': {
+        terms: ['jacket', 'coat', 'blazer', 'outerwear', 'windbreaker'],
+        baseScore: 15
+    },
+    'Dress': {
+        terms: ['dress', 'gown', 'frock', 'sundress'],
+        baseScore: 12
+    },
+    'Shoes': {
+        terms: ['shoes', 'boots', 'sneakers', 'sandals', 'heels'],
+        baseScore: 10
+    }
+};
+
+// Material types for additional context
+const MATERIALS = {
+    'cotton': { factor: 1.0 },
+    'wool': { factor: 1.3 },
+    'polyester': { factor: 1.2 },
+    'leather': { factor: 1.5 },
+    'denim': { factor: 1.2 }
 };
 
 async function recognizeClothing(imageBuffer) {
     try {
-        const analysis = await analyzeImage(imageBuffer);
-        
-        const result = {
-            items: new Set(),
-            description: analysis.caption,
-            confidence: analysis.confidence,
-            details: [],
-            materials: new Set()
-        };
-
-        // First, check the caption for initial context
-        if (analysis.caption) {
-            const caption = analysis.caption.toLowerCase();
-            for (const [category, variations] of Object.entries(CLOTHING_CATEGORIES)) {
-                if (variations.some(variation => caption.includes(variation.toLowerCase()))) {
-                    result.items.add(category);
-                }
+        // Analyze image using Azure Vision
+        const result = await client.path('/imageanalysis:analyze').post({
+            body: imageBuffer,
+            queryParameters: {
+                features: ['Caption', 'Tags'],
+                language: 'en',
+                'gender-neutral-caption': true,
+                modelVersion: 'latest'
+            },
+            headers: {
+                'Content-Type': 'application/octet-stream'
             }
-        }
+        });
 
-        // Process tags with high confidence (above 0.6)
-        if (analysis.tags) {
-            analysis.tags.forEach(tag => {
-                if (tag.confidence > 0.6) {
-                    result.details.push({
-                        name: tag.name,
-                        confidence: tag.confidence
-                    });
+        const analysis = result.body;
+        console.log('Azure Vision Response:', analysis);
 
-                    const tagName = tag.name.toLowerCase();
-                    
-                    // Check for materials first
-                    if (tagName.includes('wool') || tagName.includes('woolen')) {
-                        result.materials.add('wool');
-                    }
-                    if (tagName.includes('cotton')) {
-                        result.materials.add('cotton');
-                    }
-                    // Add more material checks as needed
+        // Initialize results
+        const detectedItems = new Set();
+        const detectedMaterials = new Set();
+        const details = [];
 
-                    // Special handling for sweaters and knitwear
-                    if (tagName.includes('sweater') || 
-                        tagName.includes('pullover') || 
-                        tagName.includes('turtleneck') ||
-                        tagName.includes('knit')) {
-                        result.items.delete('T-shirt'); // Remove T-shirt if it was added
-                        result.items.add('Sweater');
-                    }
+        // Process caption
+        if (analysis.captionResult) {
+            const caption = analysis.captionResult.text.toLowerCase();
+            console.log('Caption:', caption);
 
-                    // Check other categories
-                    for (const [category, variations] of Object.entries(CLOTHING_CATEGORIES)) {
-                        if (variations.some(variation => tagName.includes(variation.toLowerCase()))) {
-                            result.items.add(category);
-                        }
-                    }
+            // Check caption for clothing items
+            Object.entries(CLOTHING_TYPES).forEach(([type, data]) => {
+                if (data.terms.some(term => caption.includes(term))) {
+                    detectedItems.add(type);
                 }
             });
         }
 
-        // Convert Sets to Arrays
-        let detectedItems = Array.from(result.items);
-        const detectedMaterials = Array.from(result.materials);
+        // Process tags
+        if (analysis.tagsResult) {
+            analysis.tagsResult.values.forEach(tag => {
+                if (tag.confidence > 0.6) {
+                    const tagName = tag.name.toLowerCase();
+                    details.push({
+                        name: tag.name,
+                        confidence: tag.confidence
+                    });
 
-        // Filter for items we can score
-        detectedItems = detectedItems.filter(item => CARBON_SCORES.hasOwnProperty(item));
+                    // Check for clothing items
+                    Object.entries(CLOTHING_TYPES).forEach(([type, data]) => {
+                        if (data.terms.some(term => tagName.includes(term))) {
+                            detectedItems.add(type);
+                        }
+                    });
 
-        if (detectedItems.length === 0) {
-            throw new Error('No scoreable clothing items detected in the image');
+                    // Check for materials
+                    Object.keys(MATERIALS).forEach(material => {
+                        if (tagName.includes(material)) {
+                            detectedMaterials.add(material);
+                        }
+                    });
+                }
+            });
         }
 
-        // Calculate carbon scores with materials
-        const scoredItems = detectedItems.map(item => ({
-            name: item,
-            baseScore: CARBON_SCORES[item],
-            materials: detectedMaterials,
-            materialMultiplier: detectedMaterials.length > 0 
-                ? Math.max(...detectedMaterials.map(m => MATERIAL_MULTIPLIERS[m] || 1))
-                : 1,
-            finalScore: CARBON_SCORES[item] * (detectedMaterials.length > 0 
-                ? Math.max(...detectedMaterials.map(m => MATERIAL_MULTIPLIERS[m] || 1))
-                : 1)
-        }));
+        // Convert sets to arrays
+        const items = Array.from(detectedItems);
+        const materials = Array.from(detectedMaterials);
+
+        if (items.length === 0) {
+            throw new Error('No clothing items detected in the image');
+        }
+
+        // Calculate scores
+        const scores = items.map(item => {
+            const baseScore = CLOTHING_TYPES[item].baseScore;
+            const materialFactor = materials.length > 0 
+                ? Math.max(...materials.map(m => MATERIALS[m]?.factor || 1))
+                : 1;
+
+            return {
+                name: item,
+                baseScore,
+                materialFactor,
+                finalScore: baseScore * materialFactor
+            };
+        });
 
         return {
-            items: detectedItems,
-            description: analysis.caption,
-            confidence: analysis.confidence,
-            details: result.details,
-            materials: detectedMaterials,
-            scores: scoredItems
+            success: true,
+            data: {
+                items,
+                materials,
+                details,
+                caption: analysis.captionResult?.text,
+                confidence: analysis.captionResult?.confidence,
+                scores
+            }
         };
 
     } catch (error) {
-        console.error('Error in recognizeClothing:', error);
+        console.error('Error analyzing image:', error);
         throw error;
     }
-}
-
-// Helper function to detect materials
-function detectMaterials(tags) {
-    const materials = new Set();
-    
-    tags?.forEach(tag => {
-        const tagName = tag.name.toLowerCase();
-        Object.keys(MATERIAL_MULTIPLIERS).forEach(material => {
-            if (tagName.includes(material)) {
-                materials.add(material);
-            }
-        });
-    });
-
-    return Array.from(materials);
 }
 
 module.exports = {
