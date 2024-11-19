@@ -25,12 +25,19 @@ const BASE_SCORES = {
     'T-shirt': 5,
     'Jeans': 10,
     'Sweater': 8,
-    'Jacket': 15
+    'Jacket': 15,
+    'Shoes': 8,
+    'shoes': 8,
+    'shoe': 8,
+    'Shirt': 7,
+    'Dress': 12,
     // Add more items as needed
 };
 
 function calculateCarbonScore(item) {
-    const baseScore = BASE_SCORES[item.name] || 0;
+    const itemName = item.name.charAt(0).toUpperCase() + item.name.slice(1).toLowerCase();
+    
+    const baseScore = BASE_SCORES[itemName] || BASE_SCORES[item.name.toLowerCase()] || 0;
     const materialFactor = MATERIAL_FACTORS[item.material] || 1.0;
     const conditionFactor = CONDITION_FACTORS[item.condition] || 1.0;
     const ageFactor = AGE_FACTORS[item.age] || 1.0;

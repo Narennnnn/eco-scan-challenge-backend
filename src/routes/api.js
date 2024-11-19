@@ -29,20 +29,15 @@ const upload = multer({
         cb(null, true);
     }
 }).single('image');
-
-// Validate image dimensions
 const validateImageDimensions = (buffer) => {
     try {
         const dimensions = sizeOf(buffer);
-        
         if (dimensions.width < MIN_DIMENSION || dimensions.height < MIN_DIMENSION) {
             throw new Error(`Image dimensions must be at least ${MIN_DIMENSION}x${MIN_DIMENSION} pixels`);
         }
-        
         if (dimensions.width > MAX_DIMENSION || dimensions.height > MAX_DIMENSION) {
             throw new Error(`Image dimensions must not exceed ${MAX_DIMENSION}x${MAX_DIMENSION} pixels`);
         }
-
         return true;
     } catch (error) {
         if (error.message.includes('dimensions')) {
@@ -51,12 +46,10 @@ const validateImageDimensions = (buffer) => {
         throw new Error('Invalid image format or corrupted file');
     }
 };
-
 // Wrapper for handling multer errors
 const handleUpload = (req, res, next) => {
     upload(req, res, (err) => {
         if (err instanceof multer.MulterError) {
-            // Multer error handling
             switch (err.code) {
                 case 'LIMIT_FILE_SIZE':
                     return res.status(400).json({
@@ -101,8 +94,6 @@ router.post('/recognize-image', handleUpload, async (req, res) => {
 
         validateImageDimensions(req.file.buffer);
         const result = await recognizeClothing(req.file.buffer);
-
-        // Return the full result instead of simplified response
         res.json(result);  // result already has the success and data structure
 
     } catch (error) {

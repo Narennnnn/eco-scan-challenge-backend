@@ -75,10 +75,7 @@ async function recognizeClothing(imageBuffer) {
                 'Content-Type': 'application/octet-stream'
             }
         });
-
         const analysis = result.body;
-        
-        // Detailed logging of the response
         console.log('Azure Vision API Full Response:', JSON.stringify({
             modelVersion: analysis.modelVersion,
             metadata: analysis.metadata,
@@ -88,17 +85,12 @@ async function recognizeClothing(imageBuffer) {
                 confidence: tag.confidence
             }))
         }, null, 2));
-
-        // Store detected items with their priorities
         const detectedItems = new Map(); // Using Map to store item with its priority
-
-        // Process tags first (they're more specific)
         if (analysis.tagsResult?.values) {
             analysis.tagsResult.values
                 .filter(tag => tag.confidence > 0.7) // Increased confidence threshold
                 .forEach(tag => {
                     const tagName = tag.name.toLowerCase();
-                    
                     Object.entries(CLOTHING_TYPES).forEach(([type, data]) => {
                         if (data.terms.some(term => tagName.includes(term))) {
                             // Only add if priority is higher than existing
