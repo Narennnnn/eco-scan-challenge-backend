@@ -2,6 +2,8 @@ const express = require('express');
 const multer = require('multer');
 const sizeOf = require('image-size');
 const { recognizeClothing } = require('../services/imageRecognition');
+const { calculateCarbonScore, MATERIAL_FACTORS, CONDITION_FACTORS, AGE_FACTORS } = require('../services/carbonScore');
+const { getAvailableOffers } = require('../services/offers');
 const router = express.Router();
 
 // Image validation constants
@@ -87,9 +89,9 @@ const handleUpload = (req, res, next) => {
     });
 };
 
+// Endpoint 1: Image Recognition (Simplified)
 router.post('/recognize-image', handleUpload, async (req, res) => {
     try {
-        // Check if file exists
         if (!req.file) {
             return res.status(400).json({
                 success: false,
@@ -97,61 +99,89 @@ router.post('/recognize-image', handleUpload, async (req, res) => {
             });
         }
 
-        // Validate image dimensions
-        try {
-            validateImageDimensions(req.file.buffer);
-        } catch (error) {
-            return res.status(400).json({
-                success: false,
-                error: error.message,
-                details: {
-                    allowedDimensions: {
-                        min: `${MIN_DIMENSION}x${MIN_DIMENSION}`,
-                        max: `${MAX_DIMENSION}x${MAX_DIMENSION}`
-                    }
-                }
-            });
-        }
-
+        validateImageDimensions(req.file.buffer);
         const result = await recognizeClothing(req.file.buffer);
 
-        res.json({
-            success: true,
-            data: {
-                items: result.items,
-                description: result.description,
-                confidence: result.confidence,
-                details: result.details,
-                materials: result.materials,
-                scores: result.scores
-            }
-        });
+        // Return the full result instead of simplified response
+        res.json(result);  // result already has the success and data structure
 
     } catch (error) {
         console.error('Error processing image:', error);
-        
-        // Handle specific errors
-        if (error.message === 'No scoreable clothing items detected in the image') {
-            return res.status(400).json({
-                success: false,
-                error: 'No clothing items detected in the image',
-                details: 'Please upload a clear image of clothing or try a different clothing item'
-            });
-        }
-
-        if (error.message.includes('Azure')) {
-            return res.status(503).json({
-                success: false,
-                error: 'Image analysis service temporarily unavailable',
-                details: 'Please try again later'
-            });
-        }
-
-        // Generic error response
         res.status(500).json({
             success: false,
-            error: 'Failed to process image',
-            details: process.env.NODE_ENV === 'development' ? error.message : undefined
+            error: error.message || 'Failed to process image'
+        });
+    }
+});
+
+// Endpoint 2: Carbon Score Calculation
+router.post('/calculate-carbon-score', express.json(), (req, res) => {
+    try {
+        const { name, material, condition, age } = req.body;
+
+        // Validate inputs
+        if (!name) {
+            return res.status(400).json({
+                success: false,
+                error: 'Item name is required'
+            });
+        }
+
+        if (material && !MATERIAL_FACTORS[material]) {
+            return res.status(400).json({
+                success: false,
+                error: 'Invalid material type',
+                validMaterials: Object.keys(MATERIAL_FACTORS)
+            });
+        }
+
+        if (condition && !CONDITION_FACTORS[condition]) {
+            return res.status(400).json({
+                success: false,
+                error: 'Invalid condition',
+                validConditions: Object.keys(CONDITION_FACTORS)
+            });
+        }
+
+        if (age && !AGE_FACTORS[age]) {
+            return res.status(400).json({
+                success: false,
+                error: 'Invalid age range',
+                validAges: Object.keys(AGE_FACTORS)
+            });
+        }
+
+        const result = calculateCarbonScore({ name, material, condition, age });
+
+        res.json({
+            success: true,
+            data: result
+        });
+
+    } catch (error) {
+        console.error('Error calculating carbon score:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to calculate carbon score'
+        });
+    }
+});
+
+// Endpoint 3: Get Available Offers
+router.get('/offers', (req, res) => {
+    try {
+        const result = getAvailableOffers();
+        
+        res.json({
+            success: true,
+            data: result
+        });
+
+    } catch (error) {
+        console.error('Error retrieving offers:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to retrieve offers'
         });
     }
 });

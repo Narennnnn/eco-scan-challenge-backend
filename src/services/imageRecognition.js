@@ -11,46 +11,58 @@ const key = process.env.VISION_KEY;
 const credential = new AzureKeyCredential(key);
 const client = createClient(endpoint, credential);
 
-// Define clothing categories for matching
+// Improve clothing categories mapping
+// higher priority means it will override lower priority items
 const CLOTHING_TYPES = {
-    'Sweater': {
-        terms: ['sweater', 'pullover', 'jumper', 'knitwear', 'cardigan', 'turtleneck'],
-        baseScore: 8
-    },
     'T-shirt': {
-        terms: ['shirt', 't-shirt', 'tshirt', 'top', 'blouse', 'polo'],
-        baseScore: 5
+        terms: ['t-shirt', 'tshirt', 'tee', 'active shirt', 'casual shirt'],
+        baseScore: 5,
+        priority: 2
+    },
+    'Shirt': {
+        terms: ['formal shirt', 'dress shirt', 'button shirt', 'button-up', 'collared shirt', 'button down'],
+        baseScore: 7,
+        priority: 2
+    },
+    'Sweater': {
+        terms: ['sweater', 'pullover', 'jumper', 'knitwear', 'cardigan', 'turtleneck', 'wool sweater'],
+        baseScore: 8,
+        priority: 2
     },
     'Jeans': {
         terms: ['jeans', 'pants', 'trousers', 'denim', 'leggings'],
-        baseScore: 10
+        baseScore: 10,
+        priority: 2
     },
     'Jacket': {
         terms: ['jacket', 'coat', 'blazer', 'outerwear', 'windbreaker'],
-        baseScore: 15
+        baseScore: 15,
+        priority: 2
     },
     'Dress': {
-        terms: ['dress', 'gown', 'frock', 'sundress'],
-        baseScore: 12
+        terms: ['dress', 'gown', 'frock'],
+        baseScore: 12,
+        priority: 1
     },
     'Shoes': {
-        terms: ['shoes', 'boots', 'sneakers', 'sandals', 'heels'],
-        baseScore: 10
+        terms: ['shoes', 'sneakers', 'footwear', 'boots', 'sandals', 'trainers', 'athletic shoes'],
+        baseScore: 8,
+        priority: 2
+    },
+    'Accessory': {
+        terms: ['accessory', 'bag', 'belt', 'hat', 'scarf', 'sunglasses', 'watch'],
+        baseScore: 4,
+        priority: 1
+    },
+    'Undergarment': {
+        terms: ['undergarment', 'underwear', 'bra', 'panties', 'briefs', 'stockings', 'socks','bikini'],
+        baseScore: 2,
+        priority: 2
     }
-};
-
-// Material types for additional context
-const MATERIALS = {
-    'cotton': { factor: 1.0 },
-    'wool': { factor: 1.3 },
-    'polyester': { factor: 1.2 },
-    'leather': { factor: 1.5 },
-    'denim': { factor: 1.2 }
 };
 
 async function recognizeClothing(imageBuffer) {
     try {
-        // Analyze image using Azure Vision
         const result = await client.path('/imageanalysis:analyze').post({
             body: imageBuffer,
             queryParameters: {
@@ -65,85 +77,68 @@ async function recognizeClothing(imageBuffer) {
         });
 
         const analysis = result.body;
-        console.log('Azure Vision Response:', analysis);
+        
+        // Detailed logging of the response
+        console.log('Azure Vision API Full Response:', JSON.stringify({
+            modelVersion: analysis.modelVersion,
+            metadata: analysis.metadata,
+            caption: analysis.captionResult,
+            tags: analysis.tagsResult?.values.map(tag => ({
+                name: tag.name,
+                confidence: tag.confidence
+            }))
+        }, null, 2));
 
-        // Initialize results
-        const detectedItems = new Set();
-        const detectedMaterials = new Set();
-        const details = [];
+        // Store detected items with their priorities
+        const detectedItems = new Map(); // Using Map to store item with its priority
 
-        // Process caption
-        if (analysis.captionResult) {
-            const caption = analysis.captionResult.text.toLowerCase();
-            console.log('Caption:', caption);
-
-            // Check caption for clothing items
-            Object.entries(CLOTHING_TYPES).forEach(([type, data]) => {
-                if (data.terms.some(term => caption.includes(term))) {
-                    detectedItems.add(type);
-                }
-            });
-        }
-
-        // Process tags
-        if (analysis.tagsResult) {
-            analysis.tagsResult.values.forEach(tag => {
-                if (tag.confidence > 0.6) {
+        // Process tags first (they're more specific)
+        if (analysis.tagsResult?.values) {
+            analysis.tagsResult.values
+                .filter(tag => tag.confidence > 0.7) // Increased confidence threshold
+                .forEach(tag => {
                     const tagName = tag.name.toLowerCase();
-                    details.push({
-                        name: tag.name,
-                        confidence: tag.confidence
-                    });
-
-                    // Check for clothing items
+                    
                     Object.entries(CLOTHING_TYPES).forEach(([type, data]) => {
                         if (data.terms.some(term => tagName.includes(term))) {
-                            detectedItems.add(type);
+                            // Only add if priority is higher than existing
+                            if (!detectedItems.has(type) || 
+                                data.priority > detectedItems.get(type).priority) {
+                                detectedItems.set(type, {
+                                    priority: data.priority,
+                                    confidence: tag.confidence
+                                });
+                            }
                         }
                     });
+                });
+        }
 
-                    // Check for materials
-                    Object.keys(MATERIALS).forEach(material => {
-                        if (tagName.includes(material)) {
-                            detectedMaterials.add(material);
-                        }
-                    });
+        // Convert Map to array and sort by priority
+        const items = Array.from(detectedItems.entries())
+            .sort((a, b) => b[1].priority - a[1].priority)
+            .map(([type]) => type);
+
+        // If no items detected, try to extract from caption
+        if (items.length === 0 && analysis.captionResult) {
+            const caption = analysis.captionResult.text.toLowerCase();
+            Object.entries(CLOTHING_TYPES).forEach(([type, data]) => {
+                if (data.terms.some(term => caption.includes(term))) {
+                    items.push(type);
                 }
             });
         }
-
-        // Convert sets to arrays
-        const items = Array.from(detectedItems);
-        const materials = Array.from(detectedMaterials);
 
         if (items.length === 0) {
             throw new Error('No clothing items detected in the image');
         }
 
-        // Calculate scores
-        const scores = items.map(item => {
-            const baseScore = CLOTHING_TYPES[item].baseScore;
-            const materialFactor = materials.length > 0 
-                ? Math.max(...materials.map(m => MATERIALS[m]?.factor || 1))
-                : 1;
-
-            return {
-                name: item,
-                baseScore,
-                materialFactor,
-                finalScore: baseScore * materialFactor
-            };
-        });
-
+        // Simplified response
         return {
             success: true,
             data: {
-                items,
-                materials,
-                details,
-                caption: analysis.captionResult?.text,
-                confidence: analysis.captionResult?.confidence,
-                scores
+                items: items.slice(0, 1), // Return only the highest priority item
+                confidence: analysis.captionResult?.confidence || 0.0
             }
         };
 

@@ -39,7 +39,6 @@ export const AVAILABLE_OFFERS = [
     description: 'Get a free clothing recycling kit',
     pointsRequired: 200,
   },
-  // Add more offers as needed
   {
     id: '3',
     title: '10% Off Your Next Purchase',
