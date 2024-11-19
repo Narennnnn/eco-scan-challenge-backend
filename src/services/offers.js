@@ -19,6 +19,14 @@ const AVAILABLE_OFFERS = [
     },
     {
         id: '3',
+        title: 'Eco-Friendly Laundry Guide',
+        description: 'Digital guide for sustainable clothing care',
+        pointsRequired: 30,
+        type: 'digital',
+        tier: 'basic'
+    },
+    {
+        id: '4',
         title: 'Carbon Offset Certificate',
         description: 'Receive a certificate for your carbon savings',
         pointsRequired: 75,
@@ -26,7 +34,7 @@ const AVAILABLE_OFFERS = [
         tier: 'eco'
     },
     {
-        id: '4',
+        id: '5',
         title: '20% Off Sustainable Brands',
         description: 'Get 20% off on selected sustainable fashion brands',
         pointsRequired: 100,
@@ -34,7 +42,15 @@ const AVAILABLE_OFFERS = [
         tier: 'eco'
     },
     {
-        id: '5',
+        id: '6',
+        title: 'Eco-Friendly Fabric Care Kit',
+        description: 'Kit includes natural detergent and fabric care items',
+        pointsRequired: 80,
+        type: 'product',
+        tier: 'eco'
+    },
+    {
+        id: '7',
         title: 'Sustainable Fashion Consultation',
         description: 'One-on-one session with a sustainable fashion expert',
         pointsRequired: 150,
@@ -42,10 +58,66 @@ const AVAILABLE_OFFERS = [
         tier: 'premium'
     },
     {
-        id: '6',
+        id: '8',
         title: 'Eco-Wardrobe Makeover',
         description: 'Complete wardrobe sustainability assessment and recommendations',
         pointsRequired: 200,
+        type: 'service',
+        tier: 'premium'
+    },
+    {
+        id: '9',
+        title: 'Sustainable Shopping Spree',
+        description: '50% off on sustainable fashion items up to $200',
+        pointsRequired: 175,
+        type: 'discount',
+        tier: 'premium'
+    },
+    {
+        id: '10',
+        title: 'VIP Sustainable Fashion Event',
+        description: 'Exclusive access to sustainable fashion shows and events',
+        pointsRequired: 250,
+        type: 'experience',
+        tier: 'elite'
+    },
+    {
+        id: '11',
+        title: 'Custom Eco-Friendly Garment',
+        description: 'Custom-made sustainable garment of your choice',
+        pointsRequired: 300,
+        type: 'product',
+        tier: 'elite'
+    },
+    {
+        id: '12',
+        title: 'Annual Eco-Fashion Membership',
+        description: 'Year-round benefits and exclusive sustainable fashion deals',
+        pointsRequired: 400,
+        type: 'membership',
+        tier: 'elite'
+    },
+    {
+        id: '13',
+        title: 'Sustainable Fashion Workshop',
+        description: 'Online workshop about sustainable fashion practices',
+        pointsRequired: 60,
+        type: 'education',
+        tier: 'eco'
+    },
+    {
+        id: '14',
+        title: 'Fabric Care Masterclass',
+        description: 'Learn professional techniques for extending garment life',
+        pointsRequired: 90,
+        type: 'education',
+        tier: 'eco'
+    },
+    {
+        id: '15',
+        title: 'Carbon Neutral Wardrobe Plan',
+        description: 'Personalized plan to achieve a carbon-neutral wardrobe',
+        pointsRequired: 225,
         type: 'service',
         tier: 'premium'
     }
