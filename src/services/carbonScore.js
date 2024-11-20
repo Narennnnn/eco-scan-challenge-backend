@@ -97,7 +97,26 @@ const BASE_SCORES = {
     'Beach wear': 4,
     'beach wear': 4,
     'Swim brief': 4,
-    'swim brief': 4
+    'swim brief': 4,
+    'Underwear': 3,
+    'underwear': 3,
+    'Bra': 4,
+    'bra': 4,
+    'Briefs': 3,
+    'briefs': 3,
+    'Boxers': 3,
+    'boxers': 3,
+    'Panties': 3,
+    'panties': 3,
+    'Lingerie': 4,
+    'lingerie': 4,
+    'Undershirt': 3,
+    'undershirt': 3,
+    'Tank top': 3,
+    'tank top': 3,
+    'Camisole': 3,
+    'camisole': 3,
+    'Slip': 4
 };
 
 function calculateCarbonScore(item) {
