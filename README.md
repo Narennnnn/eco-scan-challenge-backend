@@ -14,9 +14,7 @@ A sustainable fashion analysis service built with Node.js/Express.js that uses c
 
 - Node.js (v22.11.0)
 - npm (v10.2.4 or higher)
-- Azure Vision API credentials
-- Redis (optional, for caching)
-- MongoDB (optional, for data persistence)
+- Azure AI services API credentials
 
 ##  Getting Started
 
@@ -35,9 +33,8 @@ npm install
 
 3. Configure environment variables:
 ```bash
-# Create .env file and add the following
-AZURE_VISION_API_KEY=<your-azure-vision-api-key>
-AZURE_VISION_API_ENDPOINT=<your-azure-vision-api-endpoint>
+VISION_KEY="<your-azure-vision-api-key>"
+VISION_ENDPOINT="<your-azure-vision-api-endpoint>"
 PORT=3000
 ```
 
@@ -46,24 +43,22 @@ PORT=3000
 Create a `.env` file in the root directory with the following configurations:
 
 ```env
-# Azure Vision API Configuration
-AZURE_VISION_API_KEY=your_vision_api_key_here
-AZURE_VISION_API_ENDPOINT=your_vision_endpoint_here
+VISION_KEY="<your-azure-vision-api-key>"
+VISION_ENDPOINT="<your-azure-vision-api-endpoint>"
+PORT=3000                       
 
-# Server Configuration
-PORT=3000                       # Optional, defaults to 3000
-NODE_ENV=development           # Optional, defaults to development
-
-# Example Azure Vision Endpoint format
-# AZURE_VISION_API_ENDPOINT=https://your-resource-name.cognitiveservices.azure.com/
+# Example Azure AI services Endpoint format
+VISION_ENDPOINT="https://your-resource-name.openai.azure.com/"
 ```
 
 To get Azure Vision API credentials:
 1. Go to Azure Portal
-2. Create or select a Computer Vision resource
-3. Go to "Keys and Endpoint" section
-4. Copy Key 1 (or Key 2) and Endpoint
-5. Paste them in your .env file
+2. Create a Azure AI service
+3. Click on create and provide project details 
+4. Once the service is created, On Overview page, you will be able to see "Keys and Endpoint" section
+5. Copy Key 1 (or Key 2) and Endpoint
+6. Paste them in your .env file
+
 
 ### Running the Application
 
