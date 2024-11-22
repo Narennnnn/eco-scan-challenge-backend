@@ -66,14 +66,9 @@ npm test
 
 - Deploy to Azure App Service for reliable hosting
 - Add MongoDB Atlas for storing scan history and user points
-- Implement Redis caching for frequent calculations
 - Add Bull.js queue for handling multiple image uploads
-- Set up Azure Application Insights for monitoring
 - Implement basic rate limiting for API protection
-- Add proper error logging and monitoring
 - Add basic authentication system
-- Implement data backup strategy
-- Real-time carbon offset suggestions
 
 
 ## Contributing
