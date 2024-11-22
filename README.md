@@ -41,6 +41,30 @@ AZURE_VISION_API_ENDPOINT=<your-azure-vision-api-endpoint>
 PORT=3000
 ```
 
+### Environment Setup
+
+Create a `.env` file in the root directory with the following configurations:
+
+```env
+# Azure Vision API Configuration
+AZURE_VISION_API_KEY=your_vision_api_key_here
+AZURE_VISION_API_ENDPOINT=your_vision_endpoint_here
+
+# Server Configuration
+PORT=3000                       # Optional, defaults to 3000
+NODE_ENV=development           # Optional, defaults to development
+
+# Example Azure Vision Endpoint format
+# AZURE_VISION_API_ENDPOINT=https://your-resource-name.cognitiveservices.azure.com/
+```
+
+To get Azure Vision API credentials:
+1. Go to Azure Portal
+2. Create or select a Computer Vision resource
+3. Go to "Keys and Endpoint" section
+4. Copy Key 1 (or Key 2) and Endpoint
+5. Paste them in your .env file
+
 ### Running the Application
 
 ```bash
